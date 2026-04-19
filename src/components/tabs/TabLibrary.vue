@@ -10,6 +10,9 @@
           <div>
             <div class="label-text" style="font-weight:700;">{{ entry.name }}</div>
             <div class="dim" style="margin-top:2px;">{{ entry.date }}</div>
+            <div v-if="entry.summary" class="dim" style="margin-top:2px;font-size:9px;">
+              PAC {{ entry.summary.pac.toFixed(1) }} · Fat {{ entry.summary.fatPct.toFixed(1) }}% · TS {{ entry.summary.totalSolids.toFixed(1) }}%
+            </div>
           </div>
           <div style="display:flex;gap:6px;">
             <button @click="load(entry)" style="background:#1e3a5f;color:var(--blue);font-size:11px;">Φόρτωση</button>

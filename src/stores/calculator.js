@@ -96,6 +96,11 @@ export const useCalculatorStore = defineStore('calculator', () => {
       id: Date.now(),
       name,
       date: new Date().toLocaleDateString('el-GR'),
+      summary: {
+        pac:         results.value.pac,
+        fatPct:      results.value.fatPct,
+        totalSolids: results.value.totalSolids,
+      },
       sorbetMode:     sorbetMode.value,
       displayTemp:    displayTemp.value,
       flavorName:     flavorName.value,

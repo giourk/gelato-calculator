@@ -240,13 +240,16 @@ export function calcBatchSummary(input) {
   const totalCost = baseCost * sf + advCostTotal + pasteCost + proCost
   const costPerKg = totalCost / (finalTotal / 1000)
 
+  const freezableWater = (1 - finalTS / 100) * finalPAC
+
   return {
-    pac:         finalPAC,
-    pod:         finalPOD,
-    fatPct:      finalFat,
-    msnf:        finalMSNF,
-    totalSolids: finalTS,
-    totalMassG:  finalTotal,
+    pac:           finalPAC,
+    pod:           finalPOD,
+    fatPct:        finalFat,
+    msnf:          finalMSNF,
+    totalSolids:   finalTS,
+    freezableWater,
+    totalMassG:    finalTotal,
     costPerKg,
     totalCost,
   }

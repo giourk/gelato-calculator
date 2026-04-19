@@ -31,6 +31,10 @@
             <StatusBadge :value="r.msnf" :low="9" :high="11" />
           </span>
         </div>
+        <div class="row" style="margin-top:6px;">
+          <span class="dim">Freezable Water</span>
+          <span class="label-text">{{ r.freezableWater.toFixed(1) }}%</span>
+        </div>
       </div>
     </div>
 
