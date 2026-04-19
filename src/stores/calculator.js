@@ -62,7 +62,7 @@ export const useCalculatorStore = defineStore('calculator', () => {
   // ── Computed results ──────────────────────────────────────────────────
   const results = computed(() => calcBatchSummary({
     sorbetMode: sorbetMode.value,
-    milk:       dairy.milk,
+    milk:       sorbetMode.value ? dairy.sorbetWater : dairy.milk,
     milkFat:    dairy.milkFat,
     cream:      dairy.cream,
     creamFat:   dairy.creamFat,
