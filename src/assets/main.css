@@ -31,3 +31,7 @@ button { cursor: pointer; border: none; border-radius: 6px; padding: 6px 12px; f
 .row:last-child { margin-bottom: 0; }
 .label-text { color: var(--text); font-size: 12px; }
 .dim { color: var(--text-dim); font-size: 11px; }
+@media print {
+  body > * { display: none !important; }
+  body > .gelato-print-sheet { display: block !important; }
+}

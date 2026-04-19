@@ -14,22 +14,26 @@
               PAC {{ entry.summary.pac.toFixed(1) }} · Fat {{ entry.summary.fatPct.toFixed(1) }}% · TS {{ entry.summary.totalSolids.toFixed(1) }}%
             </div>
           </div>
-          <div style="display:flex;gap:6px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
             <button @click="load(entry)" style="background:#1e3a5f;color:var(--blue);font-size:11px;">Φόρτωση</button>
             <button @click="del(entry.id)" style="background:#3a1a1a;color:var(--red);font-size:11px;">Διαγραφή</button>
+            <button @click="printRecipe(entry)" style="background:#1a3a1a;color:var(--green);font-size:11px;">Εκτύπωση</button>
           </div>
         </div>
       </div>
     </div>
+    <RecipePrintSheet :recipe="selectedRecipe" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useCalculatorStore } from '../../stores/calculator.js'
+import RecipePrintSheet from '../RecipePrintSheet.vue'
 
 const store = useCalculatorStore()
 const recipes = ref([])
+const selectedRecipe = ref(null)
 
 function refresh() { recipes.value = store.getLibrary() }
 onMounted(refresh)
@@ -43,6 +47,14 @@ function load(entry) {
 function del(id) {
   store.deleteRecipe(id)
   refresh()
+}
+
+async function printRecipe(entry) {
+  selectedRecipe.value = entry
+  await nextTick()
+  await new Promise(resolve => requestAnimationFrame(resolve))
+  window.print()
+  selectedRecipe.value = null
 }
 </script>
 
