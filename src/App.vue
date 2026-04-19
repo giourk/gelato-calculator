@@ -2,7 +2,7 @@
 </script>
 
 <template>
-  <div id="app">
+  <div>
     <h1>Gelato Calculator</h1>
   </div>
 </template>
