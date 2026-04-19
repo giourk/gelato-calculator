@@ -1,0 +1,33 @@
+:root {
+  --bg:        #111111;
+  --bg2:       #1a1a1a;
+  --bg3:       #222222;
+  --border:    #333333;
+  --text:      #cccccc;
+  --text-dim:  #666666;
+  --accent:    #4a90d9;
+  --accent-fg: #ffffff;
+  --blue:      #4a9eff;
+  --green:     #4aff9e;
+  --orange:    #ffaa4a;
+  --purple:    #cc88ff;
+  --red:       #ff6b6b;
+  --card-r:    10px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 14px; }
+input[type=number] {
+  background: #2a2a2a; border: 1px solid #444; border-radius: 5px;
+  color: #fff; padding: 5px 8px; width: 100%; text-align: right;
+  -moz-appearance: textfield;
+}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+button { cursor: pointer; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; }
+.card { background: var(--bg2); border-radius: var(--card-r); overflow: hidden; margin-bottom: 10px; }
+.card-header { background: var(--bg3); padding: 7px 12px; color: #aaa; font-size: 11px; letter-spacing: 1px; font-weight: 700; text-transform: uppercase; }
+.card-body { padding: 10px 12px; }
+.row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.row:last-child { margin-bottom: 0; }
+.label-text { color: var(--text); font-size: 12px; }
+.dim { color: var(--text-dim); font-size: 11px; }
