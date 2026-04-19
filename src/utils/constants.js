@@ -66,4 +66,19 @@ export const PRO_INGREDIENTS = [
   { id: 'caramel',    label: 'Σάλτσα καραμέλας',              fat: 8,  sug: 55, carb: 70, prot: 2,  ts: 80, fpd: '1.0', defaultCost: 5.00 },
   { id: 'nutella',    label: 'Φουντουκόκρεμα (Nutella type)', fat: 30, sug: 55, carb: 58, prot: 6,  ts: 88, fpd: '1.0', defaultCost: 6.00 },
   { id: 'speculoos',  label: 'Κρέμα Speculoos',               fat: 22, sug: 35, carb: 55, prot: 5,  ts: 85, fpd: '1.0', defaultCost: 7.00 },
+  // Dairy & liquids
+  { id: 'cream35',    label: 'Κρέμα γάλακτος 35%',            fat: 35, sug: 3,  carb: 3,  prot: 2,  ts: 40, fpd: '1.0', defaultCost: 2.50 },
+  { id: 'whole_milk', label: 'Γάλα πλήρες 3.5%',              fat: 3,  sug: 5,  carb: 5,  prot: 3,  ts: 12, fpd: '1.0', defaultCost: 0.70 },
+  { id: 'water',      label: 'Νερό',                           fat: 0,  sug: 0,  carb: 0,  prot: 0,  ts: 0,  fpd: '1.0', defaultCost: 0.00 },
+  { id: 'mascarpone', label: 'Μασκαρπόνε',                    fat: 40, sug: 3,  carb: 4,  prot: 6,  ts: 50, fpd: '1.0', defaultCost: 5.00 },
+  { id: 'ricotta',    label: 'Ρικότα',                         fat: 11, sug: 3,  carb: 3,  prot: 11, ts: 25, fpd: '1.0', defaultCost: 4.00 },
+  { id: 'yogurt',     label: 'Γιαούρτι 2%',                   fat: 2,  sug: 4,  carb: 4,  prot: 5,  ts: 12, fpd: '1.0', defaultCost: 1.50 },
+  { id: 'condensed',  label: 'Συμπυκνωμένο γάλα',             fat: 8,  sug: 54, carb: 56, prot: 7,  ts: 72, fpd: '1.0', defaultCost: 3.00 },
+  { id: 'plant_cream',label: 'Φυτική κρέμα',                  fat: 15, sug: 2,  carb: 5,  prot: 1,  ts: 22, fpd: '1.0', defaultCost: 3.00 },
+  // Sugars & fats
+  { id: 'sucrose_ex', label: 'Ζάχαρη (extra)',                 fat: 0,  sug: 100,carb: 100,prot: 0,  ts: 100,fpd: '1.0', defaultCost: 0.90 },
+  { id: 'cocoa_butter',label: 'Κακάο βούτυρο',                fat: 100,sug: 0,  carb: 0,  prot: 0,  ts: 100,fpd: '0',   defaultCost: 20.00 },
+  // Other
+  { id: 'whole_egg',  label: 'Φρέσκα αυγά (ολόκληρα)',        fat: 10, sug: 0,  carb: 1,  prot: 13, ts: 24, fpd: '0',   defaultCost: 4.00 },
+  { id: 'fruit_puree',label: 'Πουρές φρούτων (generic)',      fat: 0,  sug: 10, carb: 12, prot: 0,  ts: 13, fpd: '1.4', defaultCost: 3.00 },
 ]
