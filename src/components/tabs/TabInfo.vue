@@ -16,14 +16,14 @@
       <div class="card-header">ΕΥΡΗ ΤΙΜΩΝ — ΟΠΤΙΚΟΣ ΟΔΗΓΟΣ</div>
       <div class="card-body">
         <template v-if="!store.sorbetMode">
-          <RefBarItem label="Λίπος" :track-min="0" :track-max="15" :lo="6" :hi="9" :m-lo="5" :m-hi="6" unit="%" desc="Δίνει γεμάτη γεύση και δομή. Κάτω από 6%: υδαρές. Πάνω από 9%: βαρύ και λιπαρό." />
-          <RefBarItem label="MSNF (Στερεά Γάλακτος)" :track-min="0" :track-max="15" :lo="9" :hi="11" :m-lo="8" :m-hi="9" unit="%" desc="Πρωτεΐνες + λακτόζη. Δένουν τον αέρα. Πάνω από 11%: κίνδυνος κρυστάλλωσης λακτόζης." />
+          <RefBarItem label="Λίπος" :track-min="0" :track-max="15" :lo="6" :hi="9" :m-lo="5" :m-hi="6" unit="%" desc="Δίνει γεμάτη γεύση και δομή. Κάτω από 6%: υδαρές. Πάνω από 9%: βαρύ και λιπαρό." :value="store.results.fatPct" />
+          <RefBarItem label="MSNF (Στερεά Γάλακτος)" :track-min="0" :track-max="15" :lo="9" :hi="11" :m-lo="8" :m-hi="9" unit="%" desc="Πρωτεΐνες + λακτόζη. Δένουν τον αέρα. Πάνω από 11%: κίνδυνος κρυστάλλωσης λακτόζης." :value="store.results.msnf" />
         </template>
-        <RefBarItem label="Ολικά Στερεά (TS)" :track-min="20" :track-max="55" :lo="tsLo" :hi="tsHi" :m-lo="tsMargLo" :m-hi="tsLo" unit="%" :desc="`${modeLabel}: ${tsLo}–${tsHi}%. Χαμηλά → παγωτό σαν παγάκι. Υψηλά → κολλώδες.`" />
-        <RefBarItem label="Added Sugars" :track-min="0" :track-max="45" :lo="sugLo" :hi="sugHi" unit="%" :desc="`${modeLabel}: ${sugLo}–${sugHi}%. Πάνω από το όριο: κίνδυνος μαλακής/κολλώδους υφής.`" />
-        <RefBarItem label="POD (Γλυκύτητα)" :track-min="0" :track-max="30" :lo="16" :hi="22" :m-lo="14" :m-hi="16" unit="" desc="Σχετική γλυκύτητα (sucrose=100). 16–22: ισορροπημένο. Πάνω: πολύ γλυκό. Κάτω: επίπεδη γεύση." />
-        <RefBarItem :label="`PAC (${store.displayTemp}°C)`" :track-min="0" :track-max="42" :lo="pacT.low" :hi="pacT.high" :m-lo="pacT.low * 0.9" :m-hi="pacT.low" unit="" :desc="`Αντιψυκτική ικανότητα για βιτρίνα ${store.displayTemp}°C. Στόχος: ${pacT.low}–${pacT.high}. Χαμηλό → σκληρό. Υψηλό → λιώνει.`" />
-        <RefBarItem label="Frozen Water %" :track-min="50" :track-max="100" :lo="86" :hi="93" :m-lo="78" :m-hi="86" unit="%" desc="Ποσοστό νερού παγωμένο στη βιτρίνα. 86–93%: βελούδινο. >93%: πολύ σκληρό. <78%: κατάρρευση." />
+        <RefBarItem label="Ολικά Στερεά (TS)" :track-min="20" :track-max="55" :lo="tsLo" :hi="tsHi" :m-lo="tsMargLo" :m-hi="tsLo" unit="%" :desc="`${modeLabel}: ${tsLo}–${tsHi}%. Χαμηλά → παγωτό σαν παγάκι. Υψηλά → κολλώδες.`" :value="store.results.totalSolids" />
+        <RefBarItem label="Added Sugars" :track-min="0" :track-max="45" :lo="sugLo" :hi="sugHi" unit="%" :desc="`${modeLabel}: ${sugLo}–${sugHi}%. Πάνω από το όριο: κίνδυνος μαλακής/κολλώδους υφής.`" :value="store.results.addedSugarsPct" />
+        <RefBarItem label="POD (Γλυκύτητα)" :track-min="0" :track-max="30" :lo="16" :hi="22" :m-lo="14" :m-hi="16" unit="" desc="Σχετική γλυκύτητα (sucrose=100). 16–22: ισορροπημένο. Πάνω: πολύ γλυκό. Κάτω: επίπεδη γεύση." :value="store.results.pod" />
+        <RefBarItem :label="`PAC (${store.displayTemp}°C)`" :track-min="0" :track-max="42" :lo="pacT.low" :hi="pacT.high" :m-lo="pacT.low * 0.9" :m-hi="pacT.low" unit="" :desc="`Αντιψυκτική ικανότητα για βιτρίνα ${store.displayTemp}°C. Στόχος: ${pacT.low}–${pacT.high}. Χαμηλό → σκληρό. Υψηλό → λιώνει.`" :value="store.results.pac" />
+        <RefBarItem label="Frozen Water %" :track-min="50" :track-max="100" :lo="86" :hi="93" :m-lo="78" :m-hi="86" unit="%" desc="Ποσοστό νερού παγωμένο στη βιτρίνα. 86–93%: βελούδινο. >93%: πολύ σκληρό. <78%: κατάρρευση." :value="frozenWater" />
       </div>
     </div>
 
@@ -86,6 +86,13 @@ const tsHi     = computed(() => store.sorbetMode ? 35 : 40)
 const tsMargLo = computed(() => store.sorbetMode ? 26 : 34)
 const sugLo    = computed(() => store.sorbetMode ? 26 : 16)
 const sugHi    = computed(() => store.sorbetMode ? 34 : 22)
+
+const frozenWater = computed(() => {
+  const pac = store.results.pac
+  const T   = Math.abs(parseInt(store.displayTemp))
+  const ifp = Math.abs(-0.054 * pac)
+  return Math.max(0, Math.min(100, (1 - ifp / T) * 100))
+})
 </script>
 
 <style scoped>

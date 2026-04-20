@@ -242,14 +242,20 @@ export function calcBatchSummary(input) {
 
   const freezableWater = (1 - finalTS / 100) * finalPAC
 
+  // Added sugars % (sucrose + dextrose + glucose + batch additions, excl. lactose)
+  const addedSugarsG = suc_g + dex_g + gluc_g + bdex_g + bgluc_g
+  const pasteSugG = pastes.reduce((s, p) => s + (p.qty || 0) * (p.sugPct ?? p.sug ?? p.sugars ?? 0) / 100, 0)
+  const addedSugarsPct = (addedSugarsG + pasteSugG) / finalTotal * 100
+
   return {
-    pac:           finalPAC,
-    pod:           finalPOD,
-    fatPct:        finalFat,
-    msnf:          finalMSNF,
-    totalSolids:   finalTS,
+    pac:            finalPAC,
+    pod:            finalPOD,
+    fatPct:         finalFat,
+    msnf:           finalMSNF,
+    totalSolids:    finalTS,
+    addedSugarsPct,
     freezableWater,
-    totalMassG:    finalTotal,
+    totalMassG:     finalTotal,
     costPerKg,
     totalCost,
   }
