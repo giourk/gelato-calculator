@@ -15,6 +15,29 @@
       <div class="card-body">
         <NumberInput label="Overrun"        v-model="store.overrun.pct"        unit="%" :step="1" :max="60" />
         <NumberInput label="Πυκνότητα mix"  v-model="store.overrun.mixDensity" unit="g/mL" :step="0.01" :min="0.9" :max="1.2" />
+        <!-- Overrun by weight tool -->
+        <div style="margin-top:10px;">
+          <span class="ov-toggle" @click="ovOpen = !ovOpen">
+            {{ ovOpen ? '▾' : '▸' }} Υπολογισμός Overrun από βάρος
+          </span>
+          <div v-if="ovOpen" class="ov-panel">
+            <p class="dim" style="margin-bottom:8px;font-style:italic;">% Overrun = (Βάρος mix − Βάρος ice cream) / Βάρος ice cream × 100</p>
+            <div class="row">
+              <span class="label-text">Βάρος mix στο κύπελλο</span>
+              <input type="number" v-model.number="ovMixG" placeholder="π.χ. 110" style="width:90px;" @input="calcOv" />
+              <span class="dim">g</span>
+            </div>
+            <div class="row">
+              <span class="label-text">Βάρος ice cream στο κύπελλο</span>
+              <input type="number" v-model.number="ovIcG" placeholder="π.χ. 80" style="width:90px;" @input="calcOv" />
+              <span class="dim">g</span>
+            </div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+              <span class="ov-result">{{ ovResult !== null ? ovResult.toFixed(1) + '% Overrun' : '—' }}</span>
+              <button :disabled="ovResult === null" @click="applyOv" class="ov-apply-btn">→ Εφάρμοσε</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -85,6 +108,7 @@
 </template>
 
 <script setup>
+import { ref, computed } from 'vue'
 import { useCalculatorStore } from '../../stores/calculator.js'
 import { PRO_INGREDIENTS } from '../../utils/constants.js'
 import NumberInput from '../shared/NumberInput.vue'
@@ -97,8 +121,31 @@ function onAddPro(e) {
     e.target.value = ''
   }
 }
+
+// Overrun by weight tool
+const ovOpen  = ref(false)
+const ovMixG  = ref(null)
+const ovIcG   = ref(null)
+const ovResult = ref(null)
+
+function calcOv() {
+  const mix = ovMixG.value
+  const ic  = ovIcG.value
+  if (!mix || !ic || ic <= 0 || mix <= ic) { ovResult.value = null; return }
+  ovResult.value = (mix - ic) / ic * 100
+}
+function applyOv() {
+  if (ovResult.value === null) return
+  store.overrun.pct = parseFloat(ovResult.value.toFixed(1))
+}
 </script>
 
 <style scoped>
 .paste-row { background:#222; border-radius:8px; padding:10px; margin-bottom:10px; }
+.ov-toggle { font-size:11px; color:var(--blue); cursor:pointer; user-select:none; }
+.ov-toggle:hover { text-decoration:underline; }
+.ov-panel { margin-top:10px; padding-top:10px; border-top:1px solid #1e3a5f; }
+.ov-result { font-size:16px; font-weight:700; color:var(--blue); min-width:120px; }
+.ov-apply-btn { background:#1e3a5f; color:var(--blue); font-size:11px; padding:5px 12px; }
+.ov-apply-btn:disabled { opacity:.4; cursor:default; }
 </style>
