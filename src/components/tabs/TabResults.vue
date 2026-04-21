@@ -32,8 +32,14 @@
           </span>
         </div>
         <div class="row" style="margin-top:6px;">
-          <span class="dim">Freezable Water</span>
-          <span class="label-text">{{ r.freezableWater.toFixed(1) }}%</span>
+          <span class="dim">IFP</span>
+          <span class="label-text">{{ r.ifp.toFixed(2) }}°C</span>
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <span class="dim">Νερό παγωμένο</span>
+          <span class="label-text">{{ r.pctFrozen.toFixed(1) }}%
+            <StatusBadge :value="r.pctFrozen" :low="86" :high="93" />
+          </span>
         </div>
       </div>
     </div>
@@ -51,10 +57,10 @@
           <span class="label-text">→ Παγωτό: {{ frozenVolume.toFixed(2) }} L</span>
         </div>
         <div style="background:#1e3a5f;border-radius:6px;height:12px;margin-top:8px;overflow:hidden;">
-          <div :style="{ width: frozenPct + '%', background: 'var(--blue)', height: '100%' }"></div>
+          <div :style="{ width: r.pctFrozen + '%', background: 'var(--blue)', height: '100%' }"></div>
         </div>
         <div class="row" style="margin-top:4px;">
-          <span class="dim">{{ frozenPct.toFixed(0) }}% παγωμένο νερό</span>
+          <span class="dim">{{ r.pctFrozen.toFixed(0) }}% παγωμένο νερό</span>
         </div>
       </div>
     </div>
@@ -99,12 +105,6 @@ const pacTarget = computed(() => {
 const frozenVolume = computed(() => {
   const mixVol = r.value.totalMassG / 1000 / store.overrun.mixDensity
   return mixVol * (1 + store.overrun.pct / 100)
-})
-
-const frozenPct = computed(() => {
-  const waterG = r.value.totalMassG * (1 - r.value.totalSolids / 100)
-  const frozenWater = waterG * (r.value.pac / 100)
-  return Math.min((frozenWater / r.value.totalMassG) * 100, 100)
 })
 
 function save() {

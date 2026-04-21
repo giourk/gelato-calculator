@@ -20,6 +20,19 @@ const CREAM_DENSITY = 1.007   // 1 L cream       ≈ 1007 g
 // The source always normalises to this batch size before computing percentages
 const BATCH_BASE = 5000 // grams
 
+// ── FPD → POD lookup with warning on unknown values ──────────────────────
+// FPD_TO_POD covers all standard gelato FPD values. Library recipes imported
+// from the legacy HTML app may carry non-standard values — warn so the
+// developer can extend the table rather than silently using the fallback.
+function podCoeffFor(fpd) {
+  const key = String(fpd ?? '1.0')
+  if (!(key in FPD_TO_POD)) {
+    console.warn(`[gelato] Unknown FPD value "${key}": POD coefficient not in table, falling back to 0.80. Add it to FPD_TO_POD in constants.js.`)
+    return 0.80
+  }
+  return FPD_TO_POD[key]
+}
+
 // ── MSNF helper (identical formula for milk and cream in v6 source) ────────
 // Source: function milkMSNF(fatPct){ return Math.max(0, 8.6 - (fatPct - 3.5) * 0.098); }
 //         function creamMSNF(fatPct){ return Math.max(0, 8.6 - (fatPct - 3.5) * 0.098); }
@@ -62,7 +75,10 @@ export function calcBatchSummary(input) {
   // ── Scale factor: normalise inputs to a 5000 g batch ─────────────────────
   // (mirrors source:  const totalBaseFull = milk+cream+sucrose+dex+gluc+smp+stab.qty;
   //                   const sf = batchBase / totalBaseFull; )
-  const totalBaseFull = milk_g + cream_g + sucrose + dextrose + glucose + smp + stab.qty
+  // SMP is a dairy ingredient — zero it out in sorbet mode so it does not
+  // skew the scale factor or contribute MSNF/lactose to a sorbet recipe.
+  const effectiveSmp  = sorbetMode ? 0 : smp
+  const totalBaseFull = milk_g + cream_g + sucrose + dextrose + glucose + effectiveSmp + stab.qty
   const sf = BATCH_BASE / totalBaseFull
 
   // ── Fat (scaled) ─────────────────────────────────────────────────────────
@@ -71,9 +87,9 @@ export function calcBatchSummary(input) {
   const baseFat = mFat + cFat
 
   // ── MSNF (scaled) ────────────────────────────────────────────────────────
-  const mMSNF  = milk_g  * (mMSNF_pct / 100) * sf
-  const cMSNF  = cream_g * (cMSNF_pct / 100) * sf
-  const sMSNF  = smp * 0.96 * sf
+  const mMSNF  = milk_g      * (mMSNF_pct / 100) * sf
+  const cMSNF  = cream_g     * (cMSNF_pct / 100) * sf
+  const sMSNF  = effectiveSmp * 0.96 * sf            // effectiveSmp = 0 in sorbet mode
   const baseMSNF = mMSNF + cMSNF + sMSNF
 
   // Lactose ≈ 54.5% of MSNF (source uses 0.545)
@@ -91,8 +107,7 @@ export function calcBatchSummary(input) {
   const stabProt = stabIn * (stab.prot / 100)
   const stabFat  = stabIn * (stab.fat  / 100)
   const stabTS   = stabIn * (stab.ts   / 100)
-  // Source uses || 0.80 as fallback, but FPD_TO_POD['1.0'] === 1.00 (truthy)
-  const stabPod  = FPD_TO_POD[String(stab.fpd)] ?? 0.80
+  const stabPod  = podCoeffFor(stab.fpd)
 
   // ── Base totals (5000 g normalised batch) ─────────────────────────────────
   const baseTS      = baseFat + baseMSNF + suc_g + dex_g + gluc_g + stabTS
@@ -174,7 +189,7 @@ export function calcBatchSummary(input) {
   for (const p of pastes) {
     if (!p.qty || p.qty <= 0) continue
     const fpdVal   = parseFloat(p.fpd ?? '1.0')
-    const podCoeff = FPD_TO_POD[String(p.fpd ?? '1.0')] ?? 0.80
+    const podCoeff = podCoeffFor(p.fpd ?? '1.0')
     pasteFat  += p.qty * (p.fatPct  ?? p.fat  ?? 0) / 100
     pasteProt += p.qty * (p.protPct ?? p.prot ?? 0) / 100
     pasteTS   += p.qty * Math.min(
@@ -198,16 +213,17 @@ export function calcBatchSummary(input) {
   }
 
   // Pro ingredients
-  let proCost = 0
+  let proCost = 0, proSugG = 0
   for (const pi of proIngredients) {
     if (!pi.qty || pi.qty <= 0) continue
     const fpdVal   = parseFloat(pi.fpd ?? '1.0')
-    const podCoeff = FPD_TO_POD[String(pi.fpd ?? '1.0')] ?? 0.80
+    const podCoeff = podCoeffFor(pi.fpd ?? '1.0')
     const sug_g    = pi.qty * (pi.sug ?? pi.sugPct ?? 0) / 100
     pasteFat  += pi.qty * (pi.fat  ?? pi.fatPct  ?? 0) / 100
     pasteProt += pi.qty * (pi.prot ?? pi.protPct ?? 0) / 100
     pasteTS   += pi.qty * (pi.ts   ?? pi.tsPct   ?? 0) / 100
     proCost   += pi.qty / 1000 * (pi.cost ?? pi.defaultCost ?? 0)
+    proSugG   += sug_g   // accumulate for addedSugarsPct
     if (fpdVal > 0) {
       pastePAC += sug_g / finalTotal * fpdVal   * 100
       pastePOD += sug_g / finalTotal * podCoeff * 100
@@ -240,12 +256,10 @@ export function calcBatchSummary(input) {
   const totalCost = baseCost * sf + advCostTotal + pasteCost + proCost
   const costPerKg = totalCost / (finalTotal / 1000)
 
-  const freezableWater = (1 - finalTS / 100) * finalPAC
-
-  // Added sugars % (sucrose + dextrose + glucose + batch additions, excl. lactose)
+  // Added sugars % (sucrose + dextrose + glucose + batch additions + pastes + pro ingredients, excl. lactose)
   const addedSugarsG = suc_g + dex_g + gluc_g + bdex_g + bgluc_g
-  const pasteSugG = pastes.reduce((s, p) => s + (p.qty || 0) * (p.sugPct ?? p.sug ?? p.sugars ?? 0) / 100, 0)
-  const addedSugarsPct = (addedSugarsG + pasteSugG) / finalTotal * 100
+  const pasteSugG    = pastes.reduce((s, p) => s + (p.qty || 0) * (p.sugPct ?? p.sug ?? p.sugars ?? 0) / 100, 0)
+  const addedSugarsPct = (addedSugarsG + pasteSugG + proSugG) / finalTotal * 100
 
   return {
     pac:            finalPAC,
@@ -254,9 +268,40 @@ export function calcBatchSummary(input) {
     msnf:           finalMSNF,
     totalSolids:    finalTS,
     addedSugarsPct,
-    freezableWater,
     totalMassG:     finalTotal,
     costPerKg,
     totalCost,
   }
+}
+
+/**
+ * Compute ice-structure metrics from PAC and serving temperature.
+ *
+ * Source: gelato_pro_v6.html v6.0 — empirical model from
+ *   Lebesi & Tzia (2012), Marshall & Arbuckle "Ice Cream" 5th ed.
+ *
+ * Formulae:
+ *   IFP (°C)        = -0.054 × PAC
+ *   pctFrozen (%)   = clamp(0-100, (1 - |IFP| / |T_serve|) × 100)
+ *   unfrozenWaterPct = (100 - TS%) × (1 - pctFrozen / 100)
+ *
+ * Texture guide at serving temp:
+ *   > 93%: too hard (difficult service)
+ *   86–93%: optimal
+ *   78–86%: slightly soft (acceptable)
+ *   < 78%: too soft (collapse risk)
+ *
+ * @param {number}        pac         — final PAC value from calcBatchSummary
+ * @param {string|number} servingTemp — serving temp in °C (e.g. '-16' or -16)
+ * @param {number}        totalSolids — TS% from calcBatchSummary
+ * @returns {{ ifp, pctFrozen, unfrozenWaterPct }}
+ */
+export function calcIFPMetrics(pac, servingTemp, totalSolids) {
+  const T   = typeof servingTemp === 'string' ? parseInt(servingTemp, 10) : servingTemp
+  const ifp = -0.054 * pac
+  const pctFrozen = Math.max(0, Math.min(100,
+    (1 - Math.abs(ifp) / Math.abs(T)) * 100
+  ))
+  const unfrozenWaterPct = (100 - totalSolids) * (1 - pctFrozen / 100)
+  return { ifp, pctFrozen, unfrozenWaterPct }
 }

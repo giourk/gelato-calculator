@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { calcBatchSummary } from '../src/utils/calculations.js'
+import { describe, it, expect, vi } from 'vitest'
+import { calcBatchSummary, calcIFPMetrics } from '../src/utils/calculations.js'
 import { STAB_PRESETS, PAC_TARGETS, SORBET_PAC_TARGETS, ADVANCED_SUGARS, PRO_INGREDIENTS } from '../src/utils/constants.js'
 
 // BASE_INPUT: milk/cream in litres, everything else in grams.
@@ -291,5 +291,162 @@ describe('cost calculation', () => {
     const { totalCost } = calcBatchSummary(BASE_INPUT)
     expect(totalCost).toBeGreaterThan(0)
     expect(totalCost).toBeLessThan(500)
+  })
+})
+
+// ── BUG REGRESSION TESTS ──────────────────────────────────────────────────
+// Each test documents a discovered bug. Must be failing before the fix.
+
+describe('Bug 1 — SMP in sorbet mode', () => {
+  // Root cause: `smp` was included in totalBaseFull (skewing sf) and in
+  // sMSNF calculation even in sorbet mode. A user who switches from a
+  // gelato recipe (smp=1300) to sorbet without the UI resetting smp gets
+  // ghost MSNF and a wrong scale factor.
+  it('sorbet with leftover SMP from gelato gives zero MSNF', () => {
+    const result = calcBatchSummary({ ...SORBET_INPUT, smp: 1300 })
+    expect(result.msnf).toBe(0)
+  })
+  it('sorbet with leftover SMP gives zero fat', () => {
+    const result = calcBatchSummary({ ...SORBET_INPUT, smp: 1300 })
+    expect(result.fatPct).toBe(0)
+  })
+  it('sorbet PAC is unaffected by leftover SMP value', () => {
+    // SMP should not enter the scale factor in sorbet mode
+    const rNoSmp  = calcBatchSummary({ ...SORBET_INPUT, smp: 0 })
+    const rWithSmp = calcBatchSummary({ ...SORBET_INPUT, smp: 1300 })
+    expect(rWithSmp.pac).toBeCloseTo(rNoSmp.pac, 1)
+  })
+})
+
+describe('Bug 2 — Pro ingredient sugars missing from addedSugarsPct', () => {
+  // Root cause: the pro-ingredients loop computed sug_g per item for PAC/POD
+  // but never accumulated it. addedSugarsPct only summed base + paste sugars.
+  it('honey pro ingredient (80% sugar) raises addedSugarsPct', () => {
+    const honey = PRO_INGREDIENTS.find(p => p.id === 'honey')
+    const r1 = calcBatchSummary(BASE_INPUT)
+    const r2 = calcBatchSummary({
+      ...BASE_INPUT,
+      proIngredients: [{ ...honey, qty: 500, cost: honey.defaultCost }],
+    })
+    expect(r2.addedSugarsPct).toBeGreaterThan(r1.addedSugarsPct)
+  })
+  it('nutella pro ingredient (55% sugar) raises addedSugarsPct', () => {
+    const nutella = PRO_INGREDIENTS.find(p => p.id === 'nutella')
+    const r1 = calcBatchSummary(BASE_INPUT)
+    const r2 = calcBatchSummary({
+      ...BASE_INPUT,
+      proIngredients: [{ ...nutella, qty: 500, cost: nutella.defaultCost }],
+    })
+    expect(r2.addedSugarsPct).toBeGreaterThan(r1.addedSugarsPct)
+  })
+  it('zero-sugar pro ingredient (egg yolk, sug=0) does not raise addedSugarsPct', () => {
+    // egg yolk has sug=0 → its sugar contribution must be exactly 0.
+    // addedSugarsPct may slightly drop due to increased finalTotal (dilution),
+    // but it must never increase.
+    const egg = PRO_INGREDIENTS.find(p => p.id === 'egg_yolk')
+    const r1 = calcBatchSummary(BASE_INPUT)
+    const r2 = calcBatchSummary({
+      ...BASE_INPUT,
+      proIngredients: [{ ...egg, qty: 200, cost: egg.defaultCost }],
+    })
+    expect(r2.addedSugarsPct).toBeLessThanOrEqual(r1.addedSugarsPct)
+  })
+})
+
+describe('Bug 3 — Silent FPD_TO_POD fallback', () => {
+  // Root cause: FPD_TO_POD[String(fpd)] ?? 0.80 runs silently.
+  // Library recipes imported from the old HTML app can carry non-standard
+  // FPD values (e.g. '1.2'). The calc silently uses 0.80 with no indication.
+  it('logs a console.warn when a paste has an unknown FPD value', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    calcBatchSummary({
+      ...BASE_INPUT,
+      pastes: [{ qty: 100, sugars: 30, fat: 10, prot: 3, ts: 50, fpd: '1.2', cost: 5 }],
+    })
+    expect(warnSpy).toHaveBeenCalled()
+    expect(warnSpy.mock.calls[0][0]).toMatch(/FPD.*1\.2/i)
+    warnSpy.mockRestore()
+  })
+  it('does NOT warn for standard FPD values in the table', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    for (const fpd of ['0', '1.0', '1.9', '0.8', '1.4', '1.5']) {
+      calcBatchSummary({
+        ...BASE_INPUT,
+        pastes: [{ qty: 100, sugars: 30, fat: 10, prot: 3, ts: 50, fpd, cost: 5 }],
+      })
+    }
+    expect(warnSpy).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+})
+
+// ── UPGRADE: IFP model (replaces the wrong freezableWater formula) ─────────
+// Source: gelato_pro_v6.html v6.0 technical calculations
+//   IFP = -0.054 × PAC            (Lebesi & Tzia 2012; Marshall & Arbuckle)
+//   pctFrozen = (1 - |IFP| / |T_serve|) × 100
+//
+// Base recipe PAC ≈ 18.88 at -16°C:
+//   IFP = -0.054 × 18.88 = -1.02°C
+//   pctFrozen = (1 - 1.02/16) × 100 = 93.6%  ← just above "optimal" 86-93%
+//   unfrozenWaterPct = 67.61% water × (1-0.936) = 4.3% of total mix
+
+describe('calcIFPMetrics — IFP model', () => {
+  it('IFP = -0.054 × PAC (empirical formula)', () => {
+    const { ifp } = calcIFPMetrics(18.88, '-16', 32.39)
+    expect(ifp).toBeCloseTo(-0.054 * 18.88, 4)
+  })
+
+  it('pctFrozen ≈ 93.6% for base recipe at -16°C', () => {
+    const { pctFrozen } = calcIFPMetrics(18.88, '-16', 32.39)
+    expect(pctFrozen).toBeCloseTo(93.6, 0)
+  })
+
+  it('unfrozenWaterPct = water% × (1 − pctFrozen/100)', () => {
+    const ts = 32.39
+    const { pctFrozen, unfrozenWaterPct } = calcIFPMetrics(18.88, '-16', ts)
+    const expected = (100 - ts) * (1 - pctFrozen / 100)
+    expect(unfrozenWaterPct).toBeCloseTo(expected, 4)
+  })
+
+  it('higher PAC → more negative IFP (greater freezing-point depression)', () => {
+    const { ifp: ifp1 } = calcIFPMetrics(18, '-16', 32)
+    const { ifp: ifp2 } = calcIFPMetrics(25, '-16', 32)
+    expect(ifp2).toBeLessThan(ifp1)
+  })
+
+  it('higher PAC → less water frozen (PAC raises the freezing point)', () => {
+    // A higher PAC means IFP is more negative, which is CLOSER to a cold
+    // serving temp → less delta available → less freezing? No — let's verify:
+    // PAC=18: IFP=-0.972, pctFrozen=(1-0.972/16)*100=93.9%
+    // PAC=25: IFP=-1.35,  pctFrozen=(1-1.35/16)*100=91.6%
+    // Higher PAC → IFP more negative → |IFP|/|T| larger → pctFrozen LOWER ✓
+    const { pctFrozen: p1 } = calcIFPMetrics(18, '-16', 32)
+    const { pctFrozen: p2 } = calcIFPMetrics(25, '-16', 32)
+    expect(p2).toBeLessThan(p1)
+  })
+
+  it('colder serving temp → more water frozen', () => {
+    const { pctFrozen: warm } = calcIFPMetrics(18.88, '-11', 32.39)
+    const { pctFrozen: cold } = calcIFPMetrics(18.88, '-18', 32.39)
+    expect(cold).toBeGreaterThan(warm)
+  })
+
+  it('pctFrozen is clamped to 0–100% for any PAC', () => {
+    for (const pac of [0, 5, 20, 40, 100]) {
+      const { pctFrozen } = calcIFPMetrics(pac, '-16', 30)
+      expect(pctFrozen).toBeGreaterThanOrEqual(0)
+      expect(pctFrozen).toBeLessThanOrEqual(100)
+    }
+  })
+
+  it('accepts numeric temp as well as string', () => {
+    const { ifp: s } = calcIFPMetrics(18.88, '-16', 32.39)
+    const { ifp: n } = calcIFPMetrics(18.88, -16,   32.39)
+    expect(s).toBeCloseTo(n, 10)
+  })
+
+  it('calcBatchSummary no longer returns freezableWater', () => {
+    const result = calcBatchSummary(BASE_INPUT)
+    expect(result.freezableWater).toBeUndefined()
   })
 })

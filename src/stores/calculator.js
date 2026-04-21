@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
-import { calcBatchSummary } from '../utils/calculations.js'
+import { calcBatchSummary, calcIFPMetrics } from '../utils/calculations.js'
 import { STAB_PRESETS, PRO_INGREDIENTS } from '../utils/constants.js'
 
 export const useCalculatorStore = defineStore('calculator', () => {
@@ -60,27 +60,31 @@ export const useCalculatorStore = defineStore('calculator', () => {
   })
 
   // ── Computed results ──────────────────────────────────────────────────
-  const results = computed(() => calcBatchSummary({
-    sorbetMode: sorbetMode.value,
-    milk:       sorbetMode.value ? dairy.sorbetWater : dairy.milk,
-    milkFat:    dairy.milkFat,
-    cream:      dairy.cream,
-    creamFat:   dairy.creamFat,
-    smp:        dairy.smp,
-    sucrose:    sugars.sucrose,
-    dextrose:   sugars.dextrose,
-    glucose:    sugars.glucose,
-    stab:       { ...stab },
-    bDex:       batchAdditions.bDex,
-    bGluc:      batchAdditions.bGluc,
-    advancedSugars: advancedSugars.value,
-    pastes:     pastes.value,
-    proIngredients: proIngredients.value,
-    costs:      { ...costs },
-    cocoa:      proSpecial.cocoa,
-    alcohol:    proSpecial.alcohol,
-    alcAbv:     proSpecial.alcAbv,
-  }))
+  const results = computed(() => {
+    const base = calcBatchSummary({
+      sorbetMode: sorbetMode.value,
+      milk:       sorbetMode.value ? dairy.sorbetWater : dairy.milk,
+      milkFat:    dairy.milkFat,
+      cream:      dairy.cream,
+      creamFat:   dairy.creamFat,
+      smp:        dairy.smp,
+      sucrose:    sugars.sucrose,
+      dextrose:   sugars.dextrose,
+      glucose:    sugars.glucose,
+      stab:       { ...stab },
+      bDex:       batchAdditions.bDex,
+      bGluc:      batchAdditions.bGluc,
+      advancedSugars: advancedSugars.value,
+      pastes:     pastes.value,
+      proIngredients: proIngredients.value,
+      costs:      { ...costs },
+      cocoa:      proSpecial.cocoa,
+      alcohol:    proSpecial.alcohol,
+      alcAbv:     proSpecial.alcAbv,
+    })
+    const ifp = calcIFPMetrics(base.pac, displayTemp.value, base.totalSolids)
+    return { ...base, ...ifp }
+  })
 
   // ── Library (localStorage) ────────────────────────────────────────────
   const STORAGE_KEY = 'gelato_lib_v60'
