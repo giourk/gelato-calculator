@@ -66,8 +66,8 @@ export function calcBatchSummary(input) {
   const sf = BATCH_BASE / totalBaseFull
 
   // ── Fat (scaled) ─────────────────────────────────────────────────────────
-  const mFat    = milk_g  * (milkFat  / 100) * sf
-  const cFat    = cream_g * (creamFat / 100) * sf
+  const mFat    = sorbetMode ? 0 : milk_g  * (milkFat  / 100) * sf
+  const cFat    = sorbetMode ? 0 : cream_g * (creamFat / 100) * sf
   const baseFat = mFat + cFat
 
   // ── MSNF (scaled) ────────────────────────────────────────────────────────
