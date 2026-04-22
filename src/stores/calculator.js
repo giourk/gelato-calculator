@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
-import { calcBatchSummary, calcIFPMetrics } from '../utils/calculations.js'
+import { calcBatchSummary, calcIFPMetrics, calcWarnings } from '../utils/calculations.js'
 import { STAB_PRESETS, PRO_INGREDIENTS } from '../utils/constants.js'
 
 export const useCalculatorStore = defineStore('calculator', () => {
@@ -59,7 +59,7 @@ export const useCalculatorStore = defineStore('calculator', () => {
     sorbetWater: 0,
   })
 
-  // ── Computed results ──────────────────────────────────────────────────
+  // ── Computed results ─────────────────────────────────────────────────
   const results = computed(() => {
     const base = calcBatchSummary({
       sorbetMode: sorbetMode.value,
@@ -85,6 +85,10 @@ export const useCalculatorStore = defineStore('calculator', () => {
     const ifp = calcIFPMetrics(base.pac, displayTemp.value, base.totalSolids)
     return { ...base, ...ifp }
   })
+
+  const warnings = computed(() =>
+    calcWarnings(results.value, displayTemp.value, sorbetMode.value)
+  )
 
   // ── Library (localStorage) ────────────────────────────────────────────
   const STORAGE_KEY = 'gelato_lib_v60'
@@ -138,6 +142,29 @@ export const useCalculatorStore = defineStore('calculator', () => {
     Object.assign(costs,      entry.costs      ?? {})
   }
 
+  function scaleRecipe(targetKg) {
+    if (!targetKg || targetKg <= 0) return
+    const currentMassG = results.value.realBatchMassG
+    if (!currentMassG || currentMassG <= 0) return
+    const sf = (targetKg * 1000) / currentMassG
+
+    dairy.milk          = +(dairy.milk          * sf).toFixed(2)
+    dairy.cream         = +(dairy.cream         * sf).toFixed(2)
+    dairy.smp           = Math.round(dairy.smp           * sf)
+    dairy.sorbetWater   = Math.round(dairy.sorbetWater   * sf)
+    sugars.sucrose      = Math.round(sugars.sucrose      * sf)
+    sugars.dextrose     = Math.round(sugars.dextrose     * sf)
+    sugars.glucose      = Math.round(sugars.glucose      * sf)
+    stab.qty            = Math.round(stab.qty            * sf)
+    batchAdditions.bDex  = Math.round(batchAdditions.bDex  * sf)
+    batchAdditions.bGluc = Math.round(batchAdditions.bGluc * sf)
+    for (const a of advancedSugars.value)  a.qty = Math.round(a.qty * sf)
+    for (const p of pastes.value)          p.qty = Math.round(p.qty * sf)
+    for (const p of proIngredients.value)  p.qty = Math.round(p.qty * sf)
+    proSpecial.cocoa    = Math.round(proSpecial.cocoa    * sf)
+    proSpecial.alcohol  = Math.round(proSpecial.alcohol  * sf)
+  }
+
   function deleteRecipe(id) {
     const lib = getLibrary().filter(r => r.id !== id)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lib))
@@ -150,8 +177,8 @@ export const useCalculatorStore = defineStore('calculator', () => {
     pastes, proIngredients, proSpecial, costs,
     // actions
     setStabPreset, addPaste, removePaste, addProIngredient, removeProIngredient,
-    saveRecipe, loadRecipe, deleteRecipe, getLibrary,
+    saveRecipe, loadRecipe, deleteRecipe, getLibrary, scaleRecipe,
     // computed
-    results,
+    results, warnings,
   }
 })
