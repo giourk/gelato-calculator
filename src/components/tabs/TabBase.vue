@@ -1,5 +1,29 @@
 <template>
   <div>
+    <!-- Batch size + warnings -->
+    <div class="card">
+      <div class="card-header">ΜΕΓΕΘΟΣ BATCH</div>
+      <div class="card-body">
+        <WarningBanner :warnings="store.warnings" />
+        <NumberInput
+          label="Στόχος batch"
+          v-model="batchTarget"
+          unit="kg"
+          :step="0.1"
+          :min="0.1"
+          width="90px"
+        />
+        <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
+          <button @click="applyScale" style="background:#1e3a5f;color:var(--blue);padding:5px 14px;font-size:12px;">
+            ↗ Εφαρμογή
+          </button>
+          <span class="dim" style="font-size:11px;font-style:italic;">
+            Κλιμακώνει όλα τα υλικά αναλογικά
+          </span>
+        </div>
+      </div>
+    </div>
+
     <!-- Mode toggle -->
     <div class="card">
       <div class="card-body" style="display:flex;gap:8px;">
@@ -95,11 +119,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useCalculatorStore } from '../../stores/calculator.js'
 import { PAC_TARGETS, SORBET_PAC_TARGETS, STAB_PRESETS, ADVANCED_SUGARS } from '../../utils/constants.js'
 import NumberInput      from '../shared/NumberInput.vue'
 import CollapsiblePanel from '../shared/CollapsiblePanel.vue'
+import WarningBanner    from '../shared/WarningBanner.vue'
 
 const store = useCalculatorStore()
 const temps = ['-11', '-12', '-14', '-16', '-18', '-20']
@@ -122,6 +147,16 @@ function setAdvQty(i, adv, rawVal) {
   } else if (qty > 0) {
     store.advancedSugars.push({ ...adv, qty })
   }
+}
+
+// Batch scaling
+const batchTarget = ref(+(store.results.realBatchMassG / 1000).toFixed(2))
+watch(
+  () => store.results.realBatchMassG,
+  (v) => { batchTarget.value = +(v / 1000).toFixed(2) }
+)
+function applyScale() {
+  if (batchTarget.value > 0) store.scaleRecipe(batchTarget.value)
 }
 </script>
 
