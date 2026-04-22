@@ -1,5 +1,7 @@
 <template>
   <div>
+    <WarningBanner :warnings="store.warnings" />
+
     <!-- Flavor name -->
     <div class="card">
       <div class="card-header">ΟΝΟΜΑ ΓΕΥΣΗΣ</div>
@@ -111,7 +113,8 @@
 import { ref, computed } from 'vue'
 import { useCalculatorStore } from '../../stores/calculator.js'
 import { PRO_INGREDIENTS } from '../../utils/constants.js'
-import NumberInput from '../shared/NumberInput.vue'
+import NumberInput    from '../shared/NumberInput.vue'
+import WarningBanner  from '../shared/WarningBanner.vue'
 
 const store = useCalculatorStore()
 
