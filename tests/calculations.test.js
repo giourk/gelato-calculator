@@ -450,3 +450,37 @@ describe('calcIFPMetrics — IFP model', () => {
     expect(result.freezableWater).toBeUndefined()
   })
 })
+
+// ── UPGRADE: real batch mass and cost ─────────────────────────────────────
+describe('realBatchMassG and realTotalCost', () => {
+  it('realBatchMassG equals sum of all real input grams', () => {
+    // milk=41L×1032=42312, cream=8L×1007=8056, smp=1300, suc=8300, dex=1100, gluc=1300, stab=50
+    const { realBatchMassG } = calcBatchSummary(BASE_INPUT)
+    expect(realBatchMassG).toBeCloseTo(62418, 0)
+  })
+
+  it('realBatchMassG increases when paste is added', () => {
+    const r1 = calcBatchSummary(BASE_INPUT)
+    const pistachio = PRO_INGREDIENTS.find(p => p.id === 'pistachio')
+    const r2 = calcBatchSummary({
+      ...BASE_INPUT,
+      proIngredients: [{ ...pistachio, qty: 500, cost: pistachio.defaultCost }],
+    })
+    expect(r2.realBatchMassG).toBeCloseTo(r1.realBatchMassG + 500, 0)
+  })
+
+  it('realTotalCost / (realBatchMassG/1000) ≈ costPerKg', () => {
+    const r = calcBatchSummary(BASE_INPUT)
+    expect(r.realTotalCost / (r.realBatchMassG / 1000)).toBeCloseTo(r.costPerKg, 1)
+  })
+
+  it('realTotalCost is greater than totalCost (real batch > normalised 5 kg)', () => {
+    const r = calcBatchSummary(BASE_INPUT)
+    expect(r.realTotalCost).toBeGreaterThan(r.totalCost)
+  })
+
+  it('realTotalCost ≈ 64.83 € for BASE_INPUT', () => {
+    const r = calcBatchSummary(BASE_INPUT)
+    expect(r.realTotalCost).toBeCloseTo(64.83, 1)
+  })
+})

@@ -261,6 +261,9 @@ export function calcBatchSummary(input) {
   const pasteSugG    = pastes.reduce((s, p) => s + (p.qty || 0) * (p.sugPct ?? p.sug ?? p.sugars ?? 0) / 100, 0)
   const addedSugarsPct = (addedSugarsG + pasteSugG + proSugG) / finalTotal * 100
 
+  const realBatchMassG = totalBaseFull + bDex + bGluc + advQtyTotal + totalPasteQty
+  const realTotalCost  = baseCost + advCostTotal + pasteCost + proCost
+
   return {
     pac:            finalPAC,
     pod:            finalPOD,
@@ -271,6 +274,8 @@ export function calcBatchSummary(input) {
     totalMassG:     finalTotal,
     costPerKg,
     totalCost,
+    realBatchMassG,
+    realTotalCost,
   }
 }
 
