@@ -11,7 +11,7 @@
  *   all other ingredients → grams
  */
 
-import { SUGAR_COEFFS, FPD_TO_POD } from './constants.js'
+import { SUGAR_COEFFS, FPD_TO_POD, PAC_TARGETS, SORBET_PAC_TARGETS } from './constants.js'
 
 // ── Density constants (g per mL) ──────────────────────────────────────────
 const MILK_DENSITY  = 1.032   // 1 L whole milk  ≈ 1032 g
@@ -301,6 +301,48 @@ export function calcBatchSummary(input) {
  * @param {number}        totalSolids — TS% from calcBatchSummary
  * @returns {{ ifp, pctFrozen, unfrozenWaterPct }}
  */
+/**
+ * Return out-of-range warnings for the current recipe results.
+ * @param {object}        results     — merged output of calcBatchSummary + calcIFPMetrics
+ * @param {string|number} displayTemp — serving temp key, e.g. '-16'
+ * @param {boolean}       sorbetMode
+ * @returns {Array<{ metric: string, value: number, message: string }>}
+ */
+export function calcWarnings(results, displayTemp, sorbetMode) {
+  const { pac, pod, fatPct, msnf, totalSolids, pctFrozen } = results
+  const temp = String(displayTemp)
+  const warnings = []
+
+  const pacTargets = sorbetMode ? SORBET_PAC_TARGETS : PAC_TARGETS
+  const pacT = pacTargets[temp]
+  if (pacT) {
+    if (pac < pacT.low)  warnings.push({ metric: 'PAC', value: pac, message: `PAC ${pac.toFixed(1)} — χαμηλό για ${temp}°C (στόχος ${pacT.low}–${pacT.high})` })
+    if (pac > pacT.high) warnings.push({ metric: 'PAC', value: pac, message: `PAC ${pac.toFixed(1)} — υψηλό για ${temp}°C (στόχος ${pacT.low}–${pacT.high})` })
+  }
+
+  if (pod < 16) warnings.push({ metric: 'POD', value: pod, message: `POD ${pod.toFixed(1)} — χαμηλό (στόχος 16–22)` })
+  if (pod > 22) warnings.push({ metric: 'POD', value: pod, message: `POD ${pod.toFixed(1)} — υψηλό (στόχος 16–22)` })
+
+  if (!sorbetMode) {
+    if (fatPct < 6) warnings.push({ metric: 'Λιπαρά', value: fatPct, message: `Λιπαρά ${fatPct.toFixed(1)}% — χαμηλά (στόχος 6–8%)` })
+    if (fatPct > 8) warnings.push({ metric: 'Λιπαρά', value: fatPct, message: `Λιπαρά ${fatPct.toFixed(1)}% — υψηλά (στόχος 6–8%)` })
+    if (msnf < 9)  warnings.push({ metric: 'MSNF', value: msnf, message: `MSNF ${msnf.toFixed(1)}% — χαμηλό (στόχος 9–11%)` })
+    if (msnf > 11) warnings.push({ metric: 'MSNF', value: msnf, message: `MSNF ${msnf.toFixed(1)}% — υψηλό (στόχος 9–11%)` })
+  }
+
+  const tsLo = sorbetMode ? 28 : 36
+  const tsHi = sorbetMode ? 35 : 40
+  if (totalSolids < tsLo) warnings.push({ metric: 'TS', value: totalSolids, message: `Ολ. Στερεά ${totalSolids.toFixed(1)}% — χαμηλά (στόχος ${tsLo}–${tsHi}%)` })
+  if (totalSolids > tsHi) warnings.push({ metric: 'TS', value: totalSolids, message: `Ολ. Στερεά ${totalSolids.toFixed(1)}% — υψηλά (στόχος ${tsLo}–${tsHi}%)` })
+
+  if (pctFrozen !== undefined) {
+    if (pctFrozen < 86) warnings.push({ metric: 'Frozen Water', value: pctFrozen, message: `Παγωμένο νερό ${pctFrozen.toFixed(1)}% — χαμηλό (στόχος 86–93%)` })
+    if (pctFrozen > 93) warnings.push({ metric: 'Frozen Water', value: pctFrozen, message: `Παγωμένο νερό ${pctFrozen.toFixed(1)}% — υψηλό (στόχος 86–93%)` })
+  }
+
+  return warnings
+}
+
 export function calcIFPMetrics(pac, servingTemp, totalSolids) {
   const T   = typeof servingTemp === 'string' ? parseInt(servingTemp, 10) : servingTemp
   const ifp = -0.054 * pac

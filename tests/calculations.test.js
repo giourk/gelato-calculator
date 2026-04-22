@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { calcBatchSummary, calcIFPMetrics } from '../src/utils/calculations.js'
+import { calcBatchSummary, calcIFPMetrics, calcWarnings } from '../src/utils/calculations.js'
 import { STAB_PRESETS, PAC_TARGETS, SORBET_PAC_TARGETS, ADVANCED_SUGARS, PRO_INGREDIENTS } from '../src/utils/constants.js'
 
 // BASE_INPUT: milk/cream in litres, everything else in grams.
@@ -482,5 +482,77 @@ describe('realBatchMassG and realTotalCost', () => {
   it('realTotalCost ≈ 64.83 € for BASE_INPUT', () => {
     const r = calcBatchSummary(BASE_INPUT)
     expect(r.realTotalCost).toBeCloseTo(64.83, 1)
+  })
+})
+
+// ── UPGRADE: calcWarnings ─────────────────────────────────────────────────
+describe('calcWarnings', () => {
+  function makeResults(overrides = {}) {
+    const base = calcBatchSummary({ ...BASE_INPUT, ...overrides })
+    return { ...base, ...calcIFPMetrics(base.pac, '-16', base.totalSolids) }
+  }
+
+  it('returns array (empty or warnings) for valid input', () => {
+    const w = calcWarnings(makeResults(), '-16', false)
+    expect(Array.isArray(w)).toBe(true)
+  })
+
+  it('warns when PAC is below target for displayTemp', () => {
+    // BASE_INPUT at -16°C: PAC≈18.88, target 25-27 → low
+    const w = calcWarnings(makeResults(), '-16', false)
+    const pacWarn = w.find(x => x.metric === 'PAC')
+    expect(pacWarn).toBeDefined()
+    expect(pacWarn.message).toMatch(/χαμηλό/)
+  })
+
+  it('warns when PAC is above target', () => {
+    // Force very high dextrose to push PAC above 27
+    const r = makeResults({ dextrose: 8000 })
+    const w = calcWarnings(r, '-16', false)
+    const pacWarn = w.find(x => x.metric === 'PAC')
+    expect(pacWarn).toBeDefined()
+    expect(pacWarn.message).toMatch(/υψηλό/)
+  })
+
+  it('warns when MSNF is low (gelato mode)', () => {
+    // BASE_INPUT MSNF≈8.54% < 9%
+    const w = calcWarnings(makeResults(), '-16', false)
+    const warn = w.find(x => x.metric === 'MSNF')
+    expect(warn).toBeDefined()
+  })
+
+  it('does NOT warn about fat or MSNF in sorbet mode', () => {
+    const sorbetResults = { ...makeResults(), fatPct: 0, msnf: 0 }
+    const w = calcWarnings(sorbetResults, '-16', true)
+    expect(w.find(x => x.metric === 'Λιπαρά')).toBeUndefined()
+    expect(w.find(x => x.metric === 'MSNF')).toBeUndefined()
+  })
+
+  it('returns empty array when all metrics are in range', () => {
+    // Craft results that pass every check at -11°C (PAC target 18-20)
+    const inRange = {
+      pac: 19, pod: 18, fatPct: 7, msnf: 10,
+      totalSolids: 38, pctFrozen: 89,
+    }
+    const w = calcWarnings(inRange, '-11', false)
+    expect(w).toHaveLength(0)
+  })
+
+  it('uses sorbet PAC targets in sorbet mode', () => {
+    // SORBET_PAC_TARGETS['-16'] = { low:28, high:32 }
+    // pac=20 is below sorbet target but above gelato target for -11°C
+    const r = { pac: 20, pod: 18, fatPct: 0, msnf: 0, totalSolids: 31, pctFrozen: 89 }
+    const wSorbet = calcWarnings(r, '-16', true)
+    expect(wSorbet.find(x => x.metric === 'PAC')).toBeDefined()
+  })
+
+  it('each warning has metric, value, message fields', () => {
+    const w = calcWarnings(makeResults(), '-16', false)
+    expect(w.length).toBeGreaterThan(0)
+    for (const item of w) {
+      expect(typeof item.metric).toBe('string')
+      expect(typeof item.value).toBe('number')
+      expect(typeof item.message).toBe('string')
+    }
   })
 })
