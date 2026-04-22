@@ -69,8 +69,17 @@
     <div class="card">
       <div class="card-header">ΚΟΣΤΟΣ</div>
       <div class="card-body">
-        <div class="row"><span class="dim">Κόστος / kg</span><span class="label-text" style="font-weight:700;">€{{ r.costPerKg.toFixed(2) }}</span></div>
-        <div class="row"><span class="dim">Σύνολο batch</span><span class="label-text" style="font-weight:700;">€{{ r.totalCost.toFixed(2) }}</span></div>
+        <div class="row">
+          <span class="dim">Κόστος / kg</span>
+          <span class="label-text" style="font-weight:700;">€{{ r.costPerKg.toFixed(2) }}</span>
+        </div>
+        <div class="row">
+          <span class="dim">Κόστος συνταγής</span>
+          <span class="label-text" style="font-weight:700;">€{{ r.realTotalCost.toFixed(2) }}</span>
+        </div>
+        <div class="row" style="margin-top:2px;">
+          <span class="dim" style="font-size:10px;">{{ (r.realBatchMassG / 1000).toFixed(1) }} kg batch</span>
+        </div>
       </div>
     </div>
 
