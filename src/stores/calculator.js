@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
 import { calcBatchSummary, calcIFPMetrics, calcWarnings } from '../utils/calculations.js'
-import { STAB_PRESETS, PRO_INGREDIENTS, ADVANCED_SUGARS } from '../utils/constants.js'
+import { STAB_PRESETS, PRO_INGREDIENTS } from '../utils/constants.js'
 
 // Default costs — mirrors constants.js values and store costs fields
 const DEFAULT_COSTS = {
@@ -82,6 +82,7 @@ export const useCalculatorStore = defineStore('calculator', () => {
     const p = STAB_PRESETS[key]
     if (!p) return
     Object.assign(stab, { ...p, qty: p.rec })
+    stab.cost = costDB[`stab_${key}`] ?? stab.cost
   }
 
   // ── Batch additions (absolute grams) ──────────────────────────────────
@@ -111,57 +112,31 @@ export const useCalculatorStore = defineStore('calculator', () => {
 
   // ── Cost database (localStorage) ─────────────────────────────────────
   const COSTS_KEY = 'gelato_costs_v1'
-  const costDB = reactive({ ...DEFAULT_COSTS, _savedAt: null })
+  const costDB = reactive({ ...DEFAULT_COSTS })
+  const costsSavedAt = ref(null)
 
   function loadCostDB() {
     try {
       const raw = localStorage.getItem(COSTS_KEY)
       if (raw) {
         const parsed = JSON.parse(raw)
+        // Extract _savedAt separately if present in legacy data
+        if (parsed._savedAt) { costsSavedAt.value = parsed._savedAt }
         Object.assign(costDB, parsed)
       }
     } catch { /* ignore parse errors */ }
-    // Seed the costs reactive from costDB
-    costs.milk        = costDB.milk
-    costs.cream       = costDB.cream
-    costs.smp         = costDB.smp
-    costs.sorbetWater = costDB.sorbetWater
-    costs.sucrose     = costDB.sucrose
-    costs.dextrose    = costDB.dextrose
-    costs.glucose     = costDB.glucose
-    costs.bdex        = costDB.bdex
-    costs.bgluc       = costDB.bgluc
   }
 
   function saveCostDB() {
-    const ts = new Date().toISOString()
-    costDB._savedAt = ts
-    // Sync costs reactive → costDB
-    costDB.milk        = costs.milk
-    costDB.cream       = costs.cream
-    costDB.smp         = costs.smp
-    costDB.sorbetWater = costs.sorbetWater
-    costDB.sucrose     = costs.sucrose
-    costDB.dextrose    = costs.dextrose
-    costDB.glucose     = costs.glucose
-    costDB.bdex        = costs.bdex
-    costDB.bgluc       = costs.bgluc
-    localStorage.setItem(COSTS_KEY, JSON.stringify({ ...costDB }))
+    costsSavedAt.value = new Date().toISOString()
+    localStorage.setItem(COSTS_KEY, JSON.stringify({ ...costDB, _savedAt: costsSavedAt.value }))
   }
 
   function resetCostDB() {
-    Object.assign(costDB, DEFAULT_COSTS, { _savedAt: null })
+    Object.assign(costDB, DEFAULT_COSTS)
+    costsSavedAt.value = null
     localStorage.removeItem(COSTS_KEY)
-    loadCostDB()
   }
-
-  // ── Selling prices (costs) ────────────────────────────────────────────
-  const costs = reactive({
-    milk: 0.70, cream: 2.50, smp: 3.50,
-    sucrose: 0.90, dextrose: 1.20, glucose: 1.10,
-    bdex: 1.20, bgluc: 1.10,
-    sorbetWater: 0,
-  })
 
   // ── Computed results ─────────────────────────────────────────────────
   const results = computed(() => {
@@ -181,7 +156,7 @@ export const useCalculatorStore = defineStore('calculator', () => {
       advancedSugars: advancedSugars.value,
       pastes:     pastes.value,
       proIngredients: proIngredients.value,
-      costs:      { ...costs },
+      costs:      { ...costDB },
       cocoa:      proSpecial.cocoa,
       alcohol:    proSpecial.alcohol,
       alcAbv:     proSpecial.alcAbv,
@@ -225,7 +200,7 @@ export const useCalculatorStore = defineStore('calculator', () => {
       pastes:         pastes.value,
       proIngredients: proIngredients.value,
       proSpecial:     { ...proSpecial },
-      costs:          { ...costs },
+      costs:          { ...costDB },
     })
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lib))
   }
@@ -243,7 +218,7 @@ export const useCalculatorStore = defineStore('calculator', () => {
     pastes.value         = entry.pastes         ?? []
     proIngredients.value = entry.proIngredients ?? []
     Object.assign(proSpecial, entry.proSpecial ?? {})
-    Object.assign(costs,      entry.costs      ?? {})
+    if (entry.costs) Object.assign(costDB, entry.costs)
   }
 
   function scaleRecipe(targetKg) {
@@ -281,8 +256,8 @@ export const useCalculatorStore = defineStore('calculator', () => {
     // state
     sorbetMode, displayTemp, flavorName,
     dairy, sugars, advancedSugars, stab, batchAdditions, overrun,
-    pastes, proIngredients, proSpecial, costs,
-    costDB, DEFAULT_COSTS,
+    pastes, proIngredients, proSpecial,
+    costDB, costsSavedAt, DEFAULT_COSTS,
     // actions
     setStabPreset, addPaste, removePaste, addProIngredient, removeProIngredient,
     saveRecipe, loadRecipe, deleteRecipe, getLibrary, scaleRecipe,

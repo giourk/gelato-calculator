@@ -28,7 +28,6 @@
             :unit="row.unit"
             :default-val="defaultVal(row.key)"
             v-model="store.costDB[row.key]"
-            @update:modelValue="onCostChange(row.key, $event)"
           />
         </template>
       </div>
@@ -50,7 +49,6 @@
             :unit="row.unit"
             :default-val="defaultVal(row.key)"
             v-model="store.costDB[row.key]"
-            @update:modelValue="onCostChange(row.key, $event)"
           />
         </template>
         <div class="cost-subsection-label">Σταθεροποιητές</div>
@@ -150,9 +148,9 @@
           ↺ Επαναφορά
         </button>
       </div>
-      <div v-if="store.costDB._savedAt" class="card-body" style="padding-top:0;">
+      <div v-if="store.costsSavedAt" class="card-body" style="padding-top:0;">
         <span class="dim" style="font-size:10px;">
-          Τελευταία αποθήκευση: {{ formatDate(store.costDB._savedAt) }}
+          Τελευταία αποθήκευση: {{ formatDate(store.costsSavedAt) }}
         </span>
       </div>
     </div>
@@ -162,7 +160,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useCalculatorStore } from '../../stores/calculator.js'
-import { PRO_INGREDIENTS, ADVANCED_SUGARS } from '../../utils/constants.js'
+import { PRO_INGREDIENTS } from '../../utils/constants.js'
 import CostRow from '../CostRow.vue'
 
 const store = useCalculatorStore()
@@ -223,13 +221,6 @@ const visibleSections = computed(() => {
 
 function defaultVal(key) {
   return store.DEFAULT_COSTS[key] ?? 0
-}
-
-// When a dairy/sugar cost changes, sync to costs reactive too
-function onCostChange(key, val) {
-  if (key in store.costs) {
-    store.costs[key] = val
-  }
 }
 
 function handleSave() {
