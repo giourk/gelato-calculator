@@ -160,7 +160,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useCalculatorStore } from '../../stores/calculator.js'
-import { PRO_INGREDIENTS } from '../../utils/constants.js'
+import { PRO_INGREDIENTS, ADVANCED_SUGARS } from '../../utils/constants.js'
 import CostRow from '../CostRow.vue'
 
 const store = useCalculatorStore()
