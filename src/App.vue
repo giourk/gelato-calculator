@@ -19,6 +19,7 @@
       <TabFlavor   v-if="activeTab === 'flavor'" />
       <TabResults  v-if="activeTab === 'results'" />
       <TabLibrary  v-if="activeTab === 'library'" />
+      <TabCosts    v-if="activeTab === 'costs'" />
       <TabInfo     v-if="activeTab === 'info'" />
     </main>
 
@@ -55,6 +56,7 @@ import TabBase    from './components/tabs/TabBase.vue'
 import TabFlavor  from './components/tabs/TabFlavor.vue'
 import TabResults from './components/tabs/TabResults.vue'
 import TabLibrary from './components/tabs/TabLibrary.vue'
+import TabCosts   from './components/tabs/TabCosts.vue'
 import TabInfo    from './components/tabs/TabInfo.vue'
 
 const store = useCalculatorStore()
@@ -64,6 +66,7 @@ const tabs = [
   { id: 'flavor',  label: 'ΓΕΥΣΗ' },
   { id: 'results', label: 'ΑΠΟΤΕΛ.' },
   { id: 'library', label: 'ΒΙΒΛΙΟΘ.' },
+  { id: 'costs',   label: 'ΤΙΜΕΣ' },
   { id: 'info',    label: 'INFO' },
 ]
 
@@ -82,7 +85,7 @@ const pacColor = computed(() => {
 .app { display: flex; flex-direction: column; min-height: 100dvh; }
 .app-header { background: #0d0d0d; padding: 10px 16px; }
 .app-title  { color: #fff; font-weight: 700; font-size: 14px; letter-spacing: 1px; }
-.tab-nav    { display: grid; grid-template-columns: repeat(5, 1fr); background: #1a1a1a; border-bottom: 1px solid #333; }
+.tab-nav    { display: grid; grid-template-columns: repeat(6, 1fr); background: #1a1a1a; border-bottom: 1px solid #333; }
 .tab-btn    { background: none; border-radius: 0; padding: 9px 4px; color: #555; font-size: 10px; font-weight: 700; border-bottom: 2px solid transparent; }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: #1e3a5f22; }
 .tab-content { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 70px; }

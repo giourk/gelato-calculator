@@ -1,7 +1,65 @@
 import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
 import { calcBatchSummary, calcIFPMetrics, calcWarnings } from '../utils/calculations.js'
-import { STAB_PRESETS, PRO_INGREDIENTS } from '../utils/constants.js'
+import { STAB_PRESETS, PRO_INGREDIENTS, ADVANCED_SUGARS } from '../utils/constants.js'
+
+// Default costs — mirrors constants.js values and store costs fields
+const DEFAULT_COSTS = {
+  milk:        0.70,
+  cream:       2.50,
+  smp:         3.50,
+  sorbetWater: 0,
+  sucrose:     0.90,
+  dextrose:    1.20,
+  glucose:     1.10,
+  bdex:        1.20,
+  bgluc:       1.10,
+  // Advanced sugars (€/kg)
+  trehalose:   4.00,
+  invert:      2.50,
+  fructose:    2.00,
+  honey:       8.00,
+  agave:       6.00,
+  maltodex:    2.50,
+  isomalt:     5.00,
+  erythritol:  6.00,
+  // Stab presets (€/kg)
+  stab_base50c: 6.00,
+  stab_base100: 4.50,
+  stab_neutro:  12.00,
+  stab_custom:  5.00,
+  // Pro ingredients (€/kg) — keyed as pro_<id>
+  pro_dark_choc:   8.00,
+  pro_white_choc:  7.00,
+  pro_milk_choc:   6.50,
+  pro_hazelnut:    14.00,
+  pro_pistachio:   40.00,
+  pro_almond:      18.00,
+  pro_peanut:      5.00,
+  pro_egg_yolk:    5.00,
+  pro_honey:       8.00,
+  pro_tahini:      6.00,
+  pro_caramel:     5.00,
+  pro_nutella:     6.00,
+  pro_speculoos:   7.00,
+  pro_cream35:     2.50,
+  pro_whole_milk:  0.70,
+  pro_water:       0.00,
+  pro_mascarpone:  5.00,
+  pro_ricotta:     4.00,
+  pro_yogurt:      1.50,
+  pro_condensed:   3.00,
+  pro_plant_cream: 3.00,
+  pro_sucrose_ex:  0.90,
+  pro_cocoa_butter:20.00,
+  pro_whole_egg:   4.00,
+  pro_fruit_puree: 3.00,
+  // Special
+  cocoa:       8.00,
+  alcohol:     10.00,
+  // Generic paste default
+  paste:       15.00,
+}
 
 export const useCalculatorStore = defineStore('calculator', () => {
   // ── Mode ──────────────────────────────────────────────────────────────
@@ -44,12 +102,58 @@ export const useCalculatorStore = defineStore('calculator', () => {
   function addProIngredient(id) {
     const def = PRO_INGREDIENTS.find(p => p.id === id)
     if (!def) return
-    proIngredients.value.push({ ...def, qty: 0, cost: def.defaultCost })
+    proIngredients.value.push({ ...def, qty: 0, cost: costDB[`pro_${id}`] ?? def.defaultCost })
   }
   function removeProIngredient(i) { proIngredients.value.splice(i, 1) }
 
   // ── Pro Υλικά (cocoa & alcohol) ───────────────────────────────────────
   const proSpecial = reactive({ cocoa: 0, cCocoaCost: 0, alcohol: 0, alcAbv: 0 })
+
+  // ── Cost database (localStorage) ─────────────────────────────────────
+  const COSTS_KEY = 'gelato_costs_v1'
+  const costDB = reactive({ ...DEFAULT_COSTS, _savedAt: null })
+
+  function loadCostDB() {
+    try {
+      const raw = localStorage.getItem(COSTS_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        Object.assign(costDB, parsed)
+      }
+    } catch { /* ignore parse errors */ }
+    // Seed the costs reactive from costDB
+    costs.milk        = costDB.milk
+    costs.cream       = costDB.cream
+    costs.smp         = costDB.smp
+    costs.sorbetWater = costDB.sorbetWater
+    costs.sucrose     = costDB.sucrose
+    costs.dextrose    = costDB.dextrose
+    costs.glucose     = costDB.glucose
+    costs.bdex        = costDB.bdex
+    costs.bgluc       = costDB.bgluc
+  }
+
+  function saveCostDB() {
+    const ts = new Date().toISOString()
+    costDB._savedAt = ts
+    // Sync costs reactive → costDB
+    costDB.milk        = costs.milk
+    costDB.cream       = costs.cream
+    costDB.smp         = costs.smp
+    costDB.sorbetWater = costs.sorbetWater
+    costDB.sucrose     = costs.sucrose
+    costDB.dextrose    = costs.dextrose
+    costDB.glucose     = costs.glucose
+    costDB.bdex        = costs.bdex
+    costDB.bgluc       = costs.bgluc
+    localStorage.setItem(COSTS_KEY, JSON.stringify({ ...costDB }))
+  }
+
+  function resetCostDB() {
+    Object.assign(costDB, DEFAULT_COSTS, { _savedAt: null })
+    localStorage.removeItem(COSTS_KEY)
+    loadCostDB()
+  }
 
   // ── Selling prices (costs) ────────────────────────────────────────────
   const costs = reactive({
@@ -170,14 +274,19 @@ export const useCalculatorStore = defineStore('calculator', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lib))
   }
 
+  // ── Init: load persisted cost DB ──────────────────────────────────────
+  loadCostDB()
+
   return {
     // state
     sorbetMode, displayTemp, flavorName,
     dairy, sugars, advancedSugars, stab, batchAdditions, overrun,
     pastes, proIngredients, proSpecial, costs,
+    costDB, DEFAULT_COSTS,
     // actions
     setStabPreset, addPaste, removePaste, addProIngredient, removeProIngredient,
     saveRecipe, loadRecipe, deleteRecipe, getLibrary, scaleRecipe,
+    loadCostDB, saveCostDB, resetCostDB,
     // computed
     results, warnings,
   }
