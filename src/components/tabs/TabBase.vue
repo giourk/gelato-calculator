@@ -107,12 +107,12 @@
     <div class="card">
       <div class="card-header">ΤΙΜΕΣ ΠΩΛΗΣΗΣ</div>
       <div class="card-body">
-        <NumberInput label="Γάλα"     v-model="store.costs.milk"     unit="€/L"  :step="0.01" />
-        <NumberInput label="Κρέμα"    v-model="store.costs.cream"    unit="€/L"  :step="0.01" />
-        <NumberInput label="SMP"      v-model="store.costs.smp"      unit="€/kg" :step="0.01" />
-        <NumberInput label="Ζάχαρη"   v-model="store.costs.sucrose"  unit="€/kg" :step="0.01" />
-        <NumberInput label="Dextrose" v-model="store.costs.dextrose" unit="€/kg" :step="0.01" />
-        <NumberInput label="Γλυκόζη"  v-model="store.costs.glucose"  unit="€/kg" :step="0.01" />
+        <NumberInput label="Γάλα"     v-model="store.costDB.milk"     unit="€/L"  :step="0.01" />
+        <NumberInput label="Κρέμα"    v-model="store.costDB.cream"    unit="€/L"  :step="0.01" />
+        <NumberInput label="SMP"      v-model="store.costDB.smp"      unit="€/kg" :step="0.01" />
+        <NumberInput label="Ζάχαρη"   v-model="store.costDB.sucrose"  unit="€/kg" :step="0.01" />
+        <NumberInput label="Dextrose" v-model="store.costDB.dextrose" unit="€/kg" :step="0.01" />
+        <NumberInput label="Γλυκόζη"  v-model="store.costDB.glucose"  unit="€/kg" :step="0.01" />
       </div>
     </div>
   </div>
@@ -145,7 +145,7 @@ function setAdvQty(i, adv, rawVal) {
   if (existing) {
     existing.qty = qty
   } else if (qty > 0) {
-    store.advancedSugars.push({ ...adv, qty })
+    store.advancedSugars.push({ ...adv, qty, cost: store.costDB[adv.id] ?? 0 })
   }
 }
 
